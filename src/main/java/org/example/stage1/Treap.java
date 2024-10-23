@@ -15,7 +15,8 @@ import java.util.Random;
  * <a href="http://e-maxx.ru/algo/treap">http://e-maxx.ru/algo/treap</a><br/>
  * <a href="https://www.geeksforgeeks.org/treap-a-randomized-binary-search-tree/">https://www.geeksforgeeks.org/treap-a-randomized-binary-search-tree/</a><br/>
  * <a href="https://www.geeksforgeeks.org/implementation-of-search-insert-and-delete-in-treap/">https://www.geeksforgeeks.org/implementation-of-search-insert-and-delete-in-treap/</a><br/>
- * <a href="http://faculty.washington.edu/aragon/pubs/rst89.pdf">http://faculty.washington.edu/aragon/pubs/rst89.pdf</a>
+ * <a href="http://faculty.washington.edu/aragon/pubs/rst89.pdf">http://faculty.washington.edu/aragon/pubs/rst89.pdf</a><br/>
+ * <a href="https://habr.com/ru/articles/101818/">https://habr.com/ru/articles/101818/</a><br/>
  * Примеение в linux kernel<br/>
  * <a href="https://www.kernel.org/doc/mirror/ols2005v2.pdf">https://www.kernel.org/doc/mirror/ols2005v2.pdf</a>
  *
@@ -250,7 +251,7 @@ public class Treap<K extends Comparable> {
             Node<K> tmp = null;
 
             Node<K>[] res = (Node<K>[]) Array.newInstance(this.getClass(), 2);
-            ;
+
             if (this.key.compareTo(key) <= 0) {
                 if (this.right == null) {
                     res[1] = null;
