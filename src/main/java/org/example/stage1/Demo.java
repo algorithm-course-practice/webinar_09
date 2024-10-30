@@ -35,6 +35,9 @@ public class Demo  {
                 if(cmds[0].equals("?")){
                     System.out.println(treap.search(Integer.valueOf(cmds[1])));
                 }
+                if(cmds[0].equals("all")){
+                    treap.addToAll(Integer.valueOf(cmds[1]));
+                }
                 if(cmds[0].equals("inc")){
                     String[] range = cmds[1].split(":");
                     Integer minValues = Integer.valueOf(range[0]);
@@ -51,9 +54,18 @@ public class Demo  {
                         treap.add(i);
                     }
                 }
+                if(cmds[0].equals("stat")){
+                    String[] range = cmds[1].split(":");
+                    Integer minValues = Integer.valueOf(range[0]);
+                    Integer maxValues = Integer.valueOf(range[1]);
+                    System.out.println(treap.getStats(--minValues, maxValues));
+                }
                 if(cmds[0].equals("split")){
                     Treap.Node<Integer>[] split = treap.split(Integer.valueOf(cmds[1]));
                     treap.print(split);
+                }
+                if(cmds[0].equals("k")){
+                    System.out.println(treap.findKth(Integer.valueOf(cmds[1])));
                 }
             }
             treap.print();

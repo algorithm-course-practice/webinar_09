@@ -10,16 +10,15 @@ import java.util.List;
 import java.util.Random;
 
 /**
- *
  * Теория<br/>
  * <a href="http://e-maxx.ru/algo/treap">http://e-maxx.ru/algo/treap</a><br/>
  * <a href="https://www.geeksforgeeks.org/treap-a-randomized-binary-search-tree/">https://www.geeksforgeeks.org/treap-a-randomized-binary-search-tree/</a><br/>
  * <a href="https://www.geeksforgeeks.org/implementation-of-search-insert-and-delete-in-treap/">https://www.geeksforgeeks.org/implementation-of-search-insert-and-delete-in-treap/</a><br/>
  * <a href="http://faculty.washington.edu/aragon/pubs/rst89.pdf">http://faculty.washington.edu/aragon/pubs/rst89.pdf</a><br/>
  * <a href="https://habr.com/ru/articles/101818/">https://habr.com/ru/articles/101818/</a><br/>
+ * <a href="https://habr.com/ru/articles/102006/">https://habr.com/ru/articles/102006/</a><br/>
  * Примеение в linux kernel<br/>
  * <a href="https://www.kernel.org/doc/mirror/ols2005v2.pdf">https://www.kernel.org/doc/mirror/ols2005v2.pdf</a>
- *
  */
 public class Treap<K extends Comparable> {
 
@@ -71,6 +70,40 @@ public class Treap<K extends Comparable> {
 
     }
 
+    public K findKth(int k) {
+        Node<K> cur = root;
+        while (cur != null) {
+            int leftSize = sizeOf(cur.left);
+            if (leftSize == k) {
+                return cur.key;
+            }
+            cur.pushPromise();
+            cur = leftSize > k ? cur.left : cur.right;
+            if (leftSize < k) {
+                k -= leftSize + 1;
+            }
+        }
+        return null;
+    }
+
+    public Statistic getStats(K keyMinMinusOne, K keyMax) {
+        // [x < kMin, kMin <= x]
+        Node<K>[] tmp1 = split(keyMinMinusOne);
+
+        // [kMin <= x < kMax, kMax <= x]
+        Node<K>[] tmp2 = tmp1[1].split(keyMax);
+        System.out.println("Found interval");
+        print(tmp2[0]);
+        return tmp2[0].statistic;
+    }
+
+    public void addToAll(int toAdd) {
+        if (root == null) {
+            return;
+        }
+        root.addToPromiseAdd(toAdd);
+    }
+
     private void addByMerge(Node<K> cur, Node<K> tmp) {
         if (cur.priority < tmp.priority) {
             if (cur.key.compareTo(tmp.key) > 0) {
@@ -115,10 +148,15 @@ public class Treap<K extends Comparable> {
         }
     }
 
+    private static int sizeOf(Node node) {
+        return node != null ? node.size : 0;
+    }
+
     private void inorder(Node<K> cur, List<String> res) {
         if (cur == null) {
             return;
         }
+        cur.pushPromise();
         inorder(cur.left, res);
         res.add(cur.toString());
         inorder(cur.right, res);
@@ -128,6 +166,7 @@ public class Treap<K extends Comparable> {
         if (cur == null || key.compareTo(cur.key) == 0) {
             return cur;
         }
+        cur.pushPromise();
         if (key.compareTo(cur.key) > 0) {
             return searchNode(cur.right, key);
         }
@@ -137,11 +176,12 @@ public class Treap<K extends Comparable> {
     private Node<K> deleteNode(Node<K> cur, K key) {
         if (cur == null)
             return cur;
-
+        cur.pushPromise();
         if (key.compareTo(cur.key) < 0)
-            cur.left = deleteNode(cur.left, key);
+            cur.setLeft(deleteNode(cur.left, key));
         else if (key.compareTo(cur.key) > 0)
-            cur.right = deleteNode(cur.right, key);
+            cur.setRight(deleteNode(cur.right, key));
+
 
             // IF KEY IS AT ROOT
 
@@ -158,10 +198,10 @@ public class Treap<K extends Comparable> {
         // If key is at root and both left and right are not NULL
         else if (cur.left.priority < cur.right.priority) {
             cur = leftRotation(cur);
-            cur.left = deleteNode(cur.left, key);
+            cur.setLeft(deleteNode(cur.left, key));
         } else {
             cur = rightRotation(cur);
-            cur.right = deleteNode(cur.right, key);
+            cur.setRight(deleteNode(cur.right, key));
         }
 
         return cur;
@@ -175,14 +215,15 @@ public class Treap<K extends Comparable> {
         if (cur == null) {
             return new Node<>(key);
         }
+        cur.pushPromise();
         if (key.compareTo(cur.key) > 0) {
-            cur.right = insert(cur.right, key);
+            cur.setRight(insert(cur.right, key));
             if (cur.right.priority < cur.priority) {
                 cur = leftRotation(cur);
             }
 
         } else {
-            cur.left = insert(cur.left, key);
+            cur.setLeft(insert(cur.left, key));
             if (cur.left.priority < cur.priority) {
                 cur = rightRotation(cur);
             }
@@ -200,29 +241,47 @@ public class Treap<K extends Comparable> {
             T1  T2     Left Rotation            T2  T3 */
 
     private Node<K> leftRotation(Node<K> x) {
+        x.pushPromise();
         Node<K> y = x.right;
+        y.pushPromise();
         Node<K> T2 = y.left;
 
-        y.left = x;
-        x.right = T2;
+        y.setLeft(x);
+        x.setRight(T2);
 
         return y;
     }
 
     private Node<K> rightRotation(Node<K> y) {
+        y.pushPromise();
         Node<K> x = y.left;
+        x.pushPromise();
         Node<K> T2 = x.right;
 
-        x.right = y;
-        y.left = T2;
+        x.setRight(y);
+        y.setLeft(T2);
 
         return x;
     }
 
-    public void print(Node<K>[] nodes) {
-        printer.printTrees(Arrays.asList(nodes), 1);
+    public void print(Node<K>... nodes) {
+        printer.printTrees(Arrays.asList(nodes), 2);
     }
 
+    public static class Statistic {
+        int minValue;
+        int sumValue;
+        int maxValue;
+
+        @Override
+        public String toString() {
+            return "Statistic{" +
+                    "minValue=" + minValue +
+                    ", sumValue=" + sumValue +
+                    ", maxValue=" + maxValue +
+                    '}';
+        }
+    }
 
     @Getter
     public static class Node<K extends Comparable> {
@@ -231,6 +290,10 @@ public class Treap<K extends Comparable> {
         int priority;
         Node<K> left;
         Node<K> right;
+        int size;
+        int value;
+        int addPromise;
+        Statistic statistic = new Statistic();
 
         public Node(K key) {
             this(key, RND.nextInt());
@@ -245,6 +308,80 @@ public class Treap<K extends Comparable> {
             this.priority = priority;
             this.left = left;
             this.right = right;
+            this.value = RND.nextInt(100);
+            recalculate();
+        }
+
+        public void recalculate() {
+            size = sizeOf(left) + sizeOf(right) + 1;
+            setMinValue(minOf(minOf(minValueOf(left), minValueOf(right)), value));
+            setMaxValue(maxOf(maxOf(maxValueOf(left), maxValueOf(right)), value));
+            setSumValue(sumValueOf(left) + sumValueOf(right) + value);
+        }
+
+        private static Integer valueOf(Node node) {
+            return node != null ? node.value + node.addPromise : null;
+        }
+
+        private static Integer minValueOf(Node node) {
+            return node != null ? node.statistic.minValue : null;
+        }
+
+        private static Integer maxValueOf(Node node) {
+            return node != null ? node.statistic.maxValue : null;
+        }
+
+        private static Integer sumValueOf(Node node) {
+            return node != null ? node.statistic.sumValue : 0;
+        }
+
+        private static int minOf(Integer a, Integer b) {
+            if (a != null && b != null) {
+                return Math.min(a, b);
+            }
+            if (a != null) {
+                return a;
+            }
+            if (b != null) {
+                return b;
+            }
+            return Integer.MAX_VALUE;
+        }
+
+        private static int maxOf(Integer a, Integer b) {
+            if (a != null && b != null) {
+                return Math.max(a, b);
+            }
+            if (a != null) {
+                return a;
+            }
+            if (b != null) {
+                return b;
+            }
+            return Integer.MIN_VALUE;
+        }
+
+        public void setLeft(Node<K> left) {
+            this.left = left;
+            recalculate();
+        }
+
+        public void setRight(Node<K> right) {
+            this.right = right;
+
+            recalculate();
+        }
+
+        public void setMinValue(int minValue) {
+            statistic.minValue = minValue + addPromise;
+        }
+
+        public void setMaxValue(int maxValue) {
+            statistic.maxValue = maxValue + addPromise;
+        }
+
+        public void setSumValue(int sumValue) {
+            statistic.sumValue = sumValue + addPromise * size;
         }
 
         public Node<K>[] split(K key) {
@@ -276,7 +413,26 @@ public class Treap<K extends Comparable> {
 
         @Override
         public String toString() {
-            return String.format("(%d,%d)", key, priority);
+            return String.format("(%d,%d,%d[%d]m%d s%d M%d +%d)", key, priority, valueOf(this), size, statistic.minValue, statistic.sumValue, statistic.maxValue, addPromise);
+        }
+
+        public void addToPromiseAdd(int add) {
+            addPromise += add;
+            recalculate();
+        }
+
+        public void pushPromise() {
+            if (addPromise == 0) {
+                return;
+            }
+            if (left != null) {
+                left.addToPromiseAdd(addPromise);
+            }
+            if (right != null) {
+                right.addToPromiseAdd(addPromise);
+            }
+            value += addPromise;
+            addToPromiseAdd(-addPromise); //reset to zero and recalculate
         }
     }
 }
