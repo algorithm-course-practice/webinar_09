@@ -110,14 +110,14 @@ public class Treap<K extends Comparable> {
                 if (cur.left != null) {
                     addByMerge(cur.left, tmp);
                 } else {
-                    cur.left = tmp;
+                    cur.setLeft(tmp);
 
                 }
             } else {
                 if (cur.right != null) {
                     addByMerge(cur.right, tmp);
                 } else {
-                    cur.right = tmp;
+                    cur.setRight(tmp);
                 }
 
             }
@@ -127,8 +127,8 @@ public class Treap<K extends Comparable> {
         Node<K>[] split = cur.split(tmp.key);
         cur.key = tmp.key;
         cur.priority = tmp.priority;
-        cur.left = split[0];
-        cur.right = split[1];
+        cur.setLeft(split[0]);
+        cur.setRight(split[1]);
 
     }
 
@@ -246,8 +246,8 @@ public class Treap<K extends Comparable> {
         y.pushPromise();
         Node<K> T2 = y.left;
 
-        y.setLeft(x);
         x.setRight(T2);
+        y.setLeft(x);
 
         return y;
     }
@@ -258,8 +258,8 @@ public class Treap<K extends Comparable> {
         x.pushPromise();
         Node<K> T2 = x.right;
 
-        x.setRight(y);
         y.setLeft(T2);
+        x.setRight(y);
 
         return x;
     }
