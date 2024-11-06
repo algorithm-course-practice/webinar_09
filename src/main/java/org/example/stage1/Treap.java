@@ -20,11 +20,12 @@ import java.util.Random;
  * Примеение в linux kernel<br/>
  * <a href="https://www.kernel.org/doc/mirror/ols2005v2.pdf">https://www.kernel.org/doc/mirror/ols2005v2.pdf</a>
  */
-public class Treap<K extends Comparable> {
+public class Treap {
 
-    Node<K> root;
+    public static View view = View.medium;
+    Node root;
 
-    private TreePrinter<Node<K>> printer;
+    private TreePrinter<Node> printer;
 
     public Treap() {
 
@@ -35,17 +36,91 @@ public class Treap<K extends Comparable> {
         // printer.setPrintStream(System.out);
     }
 
-
-    public void add(K key) {
-        root = insert(root, key);
+    public static View getFieldView(String cmd) {
+        try{
+            return View.valueOf(cmd);
+        }catch (Exception e){
+            return view;
+        }
     }
 
-    public void remove(K key) {
-        root = deleteNode(root, key);
+
+    public void add(Integer value) {
+        root = merge(root, new Node(value));
     }
 
-    public boolean search(K key) {
-        return searchNode(root, key) != null;
+    public void add(int pos, Integer value) {
+        Node[] split = root.split(pos);
+        Node tmp = new Node(value);
+        root = merge(merge(split[0], tmp), split[1]);
+    }
+
+
+    public void remove(int pos) {
+        if (sizeOf(root) <= pos) {
+            return;
+        }
+        Node[] low = root.split(pos);
+        Node[] high = low[1].split(1);
+
+        root = merge(low[0], high[1]);
+    }
+
+    public boolean search(Integer value) {
+        return search(root, value) != null;
+    }
+
+    public Statistic getStats(int a, int b) {
+        if (a > b) {
+            return null;
+        }
+        // [0 < a) [a < N)
+        Node[] low = root.split(a);
+        // [a < b) [b < N)
+        Node[] high = low[1].split(b - a);
+        return high[0].statistic;
+    }
+
+    public void addToAll(int a, int b, int value) {
+        // [0 < a) [a < N)
+        Node[] low = root.split(a);
+        // [a < b) [b < N)
+        Node[] high = low[1].split(b - a);
+
+        high[0].addToPromiseAdd(value);
+        root = merge(merge(low[0], high[0]), high[1]);
+    }
+
+    public void reverse(int a, int b) {
+        // [0 < a) [a < N)
+        Node[] low = root.split(a);
+        // [a < b) [b < N)
+        Node[] high = low[1].split(b - a);
+
+        high[0].reversePromise();
+        root = merge(merge(low[0], high[0]), high[1]);
+    }
+
+    public void shiftLeft(int pos){
+        Node[] split = root.split(pos);
+        root = merge(split[1], split[0]);
+    }
+
+    public void shiftRight(int pos){
+        Node[] split = root.split(root.size-pos);
+        root = merge(split[1], split[0]);
+    }
+    private Integer search(Node cur, Integer value) {
+        if (cur == null) {
+            return null;
+        }
+        if (cur.value == value) {
+            return value;
+        }
+        if (search(cur.left, value) != null) {
+            return value;
+        }
+        return search(cur.right, value);
     }
 
     public List<String> inorder() {
@@ -54,28 +129,23 @@ public class Treap<K extends Comparable> {
         return res;
     }
 
-    public Node<K>[] split(K key) {
-        return root.split(key);
+    public List<String> inorder(Node subRoot) {
+        List<String> res = new ArrayList<>();
+        inorder(subRoot, res);
+        return res;
     }
 
-    public void addByMerge(K key) {
-        Node<K> tmp = new Node<>(key);
-
-        if (root == null) {
-            root = tmp;
-            return;
-        }
-
-        addByMerge(root, tmp);
-
+    public Node[] split(int pos) {
+        return root.split(pos);
     }
 
-    public K findKth(int k) {
-        Node<K> cur = root;
+
+    public java.lang.Integer findKth(int k) {
+        Node cur = root;
         while (cur != null) {
             int leftSize = sizeOf(cur.left);
             if (leftSize == k) {
-                return cur.key;
+                return cur.value;
             }
             cur.pushPromise();
             cur = leftSize > k ? cur.left : cur.right;
@@ -86,65 +156,28 @@ public class Treap<K extends Comparable> {
         return null;
     }
 
-    public Statistic getStats(K keyMinMinusOne, K keyMax) {
-        // [x < kMin, kMin <= x]
-        Node<K>[] tmp1 = split(keyMinMinusOne);
 
-        // [kMin <= x < kMax, kMax <= x]
-        Node<K>[] tmp2 = tmp1[1].split(keyMax);
-        System.out.println("Found interval");
-        print(tmp2[0]);
-        return tmp2[0].statistic;
-    }
-
-    public void addToAll(int toAdd) {
-        if (root == null) {
-            return;
-        }
-        root.addToPromiseAdd(toAdd);
-    }
-
-    private void addByMerge(Node<K> cur, Node<K> tmp) {
-        if (cur.priority < tmp.priority) {
-            if (cur.key.compareTo(tmp.key) > 0) {
-                if (cur.left != null) {
-                    addByMerge(cur.left, tmp);
-                } else {
-                    cur.setLeft(tmp);
-
-                }
-            } else {
-                if (cur.right != null) {
-                    addByMerge(cur.right, tmp);
-                } else {
-                    cur.setRight(tmp);
-                }
-
-            }
-            return;
-        }
-
-        Node<K>[] split = cur.split(tmp.key);
-        cur.key = tmp.key;
-        cur.priority = tmp.priority;
-        cur.setLeft(split[0]);
-        cur.setRight(split[1]);
-
-    }
-
-    public Node<K> merge(Node<K> leftTree, Node<K> rightTree) {
+    public Node merge(Node leftTree, Node rightTree) {
+        push(leftTree);
+        push(rightTree);
         if (leftTree == null) {
             return rightTree;
         }
         if (rightTree == null) {
             return leftTree;
         }
-        if (leftTree.priority > rightTree.priority) {
-            Node<K> newRight = merge(leftTree.right, rightTree);
-            return new Node<>(leftTree.key, leftTree.priority, leftTree.left, newRight);
+        if (leftTree.priority < rightTree.priority) {
+            Node newRight = merge(leftTree.right, rightTree);
+            return new Node(leftTree.value, leftTree.priority, leftTree.left, newRight);
         } else {
-            Node<K> newLeft = merge(leftTree, rightTree.left);
-            return new Node<>(rightTree.key, rightTree.priority, newLeft, rightTree.right);
+            Node newLeft = merge(leftTree, rightTree.left);
+            return new Node(rightTree.value, rightTree.priority, newLeft, rightTree.right);
+        }
+    }
+
+    private static void push(Node tree) {
+        if (tree != null) {
+            tree.pushPromise();
         }
     }
 
@@ -152,7 +185,7 @@ public class Treap<K extends Comparable> {
         return node != null ? node.size : 0;
     }
 
-    private void inorder(Node<K> cur, List<String> res) {
+    private void inorder(Node cur, List<String> res) {
         if (cur == null) {
             return;
         }
@@ -162,109 +195,13 @@ public class Treap<K extends Comparable> {
         inorder(cur.right, res);
     }
 
-    private Node<K> searchNode(Node<K> cur, K key) {
-        if (cur == null || key.compareTo(cur.key) == 0) {
-            return cur;
-        }
-        cur.pushPromise();
-        if (key.compareTo(cur.key) > 0) {
-            return searchNode(cur.right, key);
-        }
-        return searchNode(cur.left, key);
-    }
-
-    private Node<K> deleteNode(Node<K> cur, K key) {
-        if (cur == null)
-            return cur;
-        cur.pushPromise();
-        if (key.compareTo(cur.key) < 0)
-            cur.setLeft(deleteNode(cur.left, key));
-        else if (key.compareTo(cur.key) > 0)
-            cur.setRight(deleteNode(cur.right, key));
-
-
-            // IF KEY IS AT ROOT
-
-            // If left is NULL
-        else if (cur.left == null) {
-            Node<K> temp = cur.right;
-            cur = temp;  // Make right child as root
-        }
-        // If Right is NULL
-        else if (cur.right == null) {
-            Node<K> temp = cur.left;
-            cur = temp;  // Make left child as root
-        }
-        // If key is at root and both left and right are not NULL
-        else if (cur.left.priority < cur.right.priority) {
-            cur = leftRotation(cur);
-            cur.setLeft(deleteNode(cur.left, key));
-        } else {
-            cur = rightRotation(cur);
-            cur.setRight(deleteNode(cur.right, key));
-        }
-
-        return cur;
-    }
 
     public void print() {
         printer.printTree(root);
     }
 
-    private Node<K> insert(Node<K> cur, K key) {
-        if (cur == null) {
-            return new Node<>(key);
-        }
-        cur.pushPromise();
-        if (key.compareTo(cur.key) > 0) {
-            cur.setRight(insert(cur.right, key));
-            if (cur.right.priority < cur.priority) {
-                cur = leftRotation(cur);
-            }
 
-        } else {
-            cur.setLeft(insert(cur.left, key));
-            if (cur.left.priority < cur.priority) {
-                cur = rightRotation(cur);
-            }
-
-        }
-        return cur;
-    }
-
-    /* T1, T2 and T3 are subtrees of the tree rooted with y
-  (on left side) or x (on right side)
-                y                               x
-               / \     Right Rotation          /  \
-              x   T3   – – – – – – – >        T1   y
-             / \       < - - - - - - -            / \
-            T1  T2     Left Rotation            T2  T3 */
-
-    private Node<K> leftRotation(Node<K> x) {
-        x.pushPromise();
-        Node<K> y = x.right;
-        y.pushPromise();
-        Node<K> T2 = y.left;
-
-        x.setRight(T2);
-        y.setLeft(x);
-
-        return y;
-    }
-
-    private Node<K> rightRotation(Node<K> y) {
-        y.pushPromise();
-        Node<K> x = y.left;
-        x.pushPromise();
-        Node<K> T2 = x.right;
-
-        y.setLeft(T2);
-        x.setRight(y);
-
-        return x;
-    }
-
-    public void print(Node<K>... nodes) {
+    public void print(Node... nodes) {
         printer.printTrees(Arrays.asList(nodes), 2);
     }
 
@@ -284,31 +221,30 @@ public class Treap<K extends Comparable> {
     }
 
     @Getter
-    public static class Node<K extends Comparable> {
+    public static class Node {
         static Random RND = new Random();
-        K key;
         int priority;
-        Node<K> left;
-        Node<K> right;
+        Node left;
+        Node right;
         int size;
-        int value;
+        Integer value;
         int addPromise;
+        boolean isReversed;
         Statistic statistic = new Statistic();
 
-        public Node(K key) {
-            this(key, RND.nextInt());
+        public Node(java.lang.Integer value) {
+            this(value, RND.nextInt());
         }
 
-        public Node(K key, int priority) {
-            this(key, priority, null, null);
+        public Node(java.lang.Integer value, int priority) {
+            this(value, priority, null, null);
         }
 
-        public Node(K key, int priority, Node<K> left, Node<K> right) {
-            this.key = key;
+        public Node(java.lang.Integer value, int priority, Node left, Node right) {
             this.priority = priority;
             this.left = left;
             this.right = right;
-            this.value = RND.nextInt(100);
+            this.value = value;
             recalculate();
         }
 
@@ -316,26 +252,26 @@ public class Treap<K extends Comparable> {
             size = sizeOf(left) + sizeOf(right) + 1;
             setMinValue(minOf(minOf(minValueOf(left), minValueOf(right)), value));
             setMaxValue(maxOf(maxOf(maxValueOf(left), maxValueOf(right)), value));
-            setSumValue(sumValueOf(left) + sumValueOf(right) + value);
+            setSumValue(sumValueOf(left) + sumValueOf(right) + (int) value);
         }
 
-        private static Integer valueOf(Node node) {
+        private static java.lang.Integer valueOf(Node node) {
             return node != null ? node.value + node.addPromise : null;
         }
 
-        private static Integer minValueOf(Node node) {
+        private static java.lang.Integer minValueOf(Node node) {
             return node != null ? node.statistic.minValue : null;
         }
 
-        private static Integer maxValueOf(Node node) {
+        private static java.lang.Integer maxValueOf(Node node) {
             return node != null ? node.statistic.maxValue : null;
         }
 
-        private static Integer sumValueOf(Node node) {
+        private static java.lang.Integer sumValueOf(Node node) {
             return node != null ? node.statistic.sumValue : 0;
         }
 
-        private static int minOf(Integer a, Integer b) {
+        private static int minOf(java.lang.Integer a, java.lang.Integer b) {
             if (a != null && b != null) {
                 return Math.min(a, b);
             }
@@ -345,10 +281,10 @@ public class Treap<K extends Comparable> {
             if (b != null) {
                 return b;
             }
-            return Integer.MAX_VALUE;
+            return java.lang.Integer.MAX_VALUE;
         }
 
-        private static int maxOf(Integer a, Integer b) {
+        private static int maxOf(java.lang.Integer a, java.lang.Integer b) {
             if (a != null && b != null) {
                 return Math.max(a, b);
             }
@@ -358,15 +294,15 @@ public class Treap<K extends Comparable> {
             if (b != null) {
                 return b;
             }
-            return Integer.MIN_VALUE;
+            return java.lang.Integer.MIN_VALUE;
         }
 
-        public void setLeft(Node<K> left) {
+        public void setLeft(Node left) {
             this.left = left;
             recalculate();
         }
 
-        public void setRight(Node<K> right) {
+        public void setRight(Node right) {
             this.right = right;
 
             recalculate();
@@ -384,36 +320,41 @@ public class Treap<K extends Comparable> {
             statistic.sumValue = sumValue + addPromise * size;
         }
 
-        public Node<K>[] split(K key) {
-            Node<K> tmp = null;
-
-            Node<K>[] res = (Node<K>[]) Array.newInstance(this.getClass(), 2);
-
-            if (this.key.compareTo(key) <= 0) {
-                if (this.right == null) {
-                    res[1] = null;
-                } else {
-                    Node<K>[] rightSplit = this.right.split(key);
-                    res[1] = rightSplit[1];
-                    tmp = rightSplit[0];
+        public Node[] split(int pos) {
+            push(this);
+            Node tmp = null;
+            Node[] res = (Node[]) Array.newInstance(this.getClass(), 2);
+            int curIndex = sizeOf(left) + 1;
+            if (curIndex <= pos) {
+                if (right != null) {
+                    Node[] split = right.split(pos - curIndex);
+                    tmp = split[0];
+                    res[1] = split[1];
                 }
-                res[0] = new Node<>(this.key, priority, this.left, tmp);
+                res[0] = new Node(value, priority, left, tmp);
             } else {
-                if (left == null) {
-                    res[0] = null;
-                } else {
-                    Node<K>[] leftSplit = this.left.split(key);
-                    res[0] = leftSplit[0];
-                    tmp = leftSplit[1];
+                if (left != null) {
+                    Node[] split = left.split(pos);
+                    tmp = split[1];
+                    res[0] = split[0];
                 }
-                res[1] = new Node<>(this.key, priority, tmp, this.right);
+                res[1] = new Node(value, priority, tmp, right);
             }
             return res;
         }
 
         @Override
         public String toString() {
-            return String.format("(%d,%d,%d[%d]m%d s%d M%d +%d)", key, priority, valueOf(this), size, statistic.minValue, statistic.sumValue, statistic.maxValue, addPromise);
+            if(Treap.view == View.value){
+                return String.valueOf(value);
+            }
+            if(Treap.view == View.small){
+                return String.format("(%d/+%d %b)", valueOf(this), addPromise, isReversed);
+            }
+            if(Treap.view == View.medium){
+                return String.format("(%d,%d[%d]/+%d %b)", valueOf(this), priority, size, addPromise, isReversed);
+            }
+            return String.format("(%d[%d]/m%d s%d M%d +%d %b)", valueOf(this), size, statistic.minValue, statistic.sumValue, statistic.maxValue, addPromise, isReversed);
         }
 
         public void addToPromiseAdd(int add) {
@@ -422,17 +363,38 @@ public class Treap<K extends Comparable> {
         }
 
         public void pushPromise() {
-            if (addPromise == 0) {
-                return;
-            }
             if (left != null) {
                 left.addToPromiseAdd(addPromise);
+                if (isReversed) {
+                    left.reversePromise();
+                }
             }
             if (right != null) {
                 right.addToPromiseAdd(addPromise);
+                if (isReversed) {
+                    right.reversePromise();
+                }
             }
             value += addPromise;
             addToPromiseAdd(-addPromise); //reset to zero and recalculate
+
+            if (isReversed) {
+                Node tmp = left;
+                left = right;
+                right = tmp;
+                isReversed = false;
+            }
         }
+
+        private void reversePromise() {
+            this.isReversed = !this.isReversed;
+        }
+    }
+
+    public enum View {
+        full,
+        medium,
+        small,
+        value
     }
 }
